@@ -7,3 +7,12 @@ This repository contains steps taken to analyse single cell multiomic (scRNA/ATA
 
 ## ChIP-seq
 
+
+
+
+Citation
+
+    URL: Pending
+    DOI: Pending
+
+

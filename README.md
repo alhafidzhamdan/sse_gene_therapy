@@ -8,7 +8,7 @@ Steps:
 
 
 Data:
-Raw data (....) can be obtained at ENA repository under the study number .....
+- Raw data (....) can be obtained at ENA repository under the study number .....
 
 
 ## ChIP-seq

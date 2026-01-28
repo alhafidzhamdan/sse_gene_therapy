@@ -7,6 +7,8 @@ library(ggrepel)
 library(patchwork)
 library(scater)
 library(RColorBrewer)
+library(emmeans)
+library(forcats)
 source("custom_function.R")
 
 # convert to bpcells
@@ -104,6 +106,10 @@ SSE1_filtered$line_condition <- ifelse(SSE1_filtered$cell_line %in% c("E17","E28
 results <- SCENIC_picking("lib","Condition_mCherry_strict",TSS = "10kbp",zPicking = 0.7) # lib or line
 scenic_sse7 <- SCENIC_SSE_extracting(results,"lib","Condition_mCherry_strict","SSE7")
 scenic_sse7 <- scenic_sse7[which(scenic_sse7$Freq>1),]
+scenic_sse7$Pvalue <- ifelse(scenic_sse7$Freq<3,0.01,scenic_sse7$Pvalue)
+scenic_sse7 <- scenic_sse7[which(scenic_sse7$Pvalue<0.05),]
+scenic_sse7$Pvalue <- ifelse(scenic_sse7$Freq<3,NA,scenic_sse7$Pvalue)
+
 scenic_sse7_sub <- scenic_sse7[c("STAT1(+),","IRF9(+),","FOS(+),","MAF(+),","ETS1(+)",
                                  "JUN(+),","HIF1A(+),","SMAD1(+),","STAT3(+),","NFE2L2(+)",
                                  "SOX8(+),","SOX9(+),","SOX2(+),"),]

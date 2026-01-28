@@ -465,7 +465,7 @@ SCENIC_SSE_extracting <- function(results=SCENIC_picking,type,compare,sse){
         
         fit <- lm(Z ~ Condition_mCherry_strict + group, data = anova_df)
         emm <- emmeans(fit, ~ Condition_mCherry_strict)
-        emm_results <- pairs(emm, adjust = "tukey") %>% as.data.frame
+        emm_results <- pairs(emm, adjust = "bonferroni") %>% as.data.frame
         emm_results <- column_to_rownames(emm_results,var = "contrast")
         
         TF_count[TF,"Pvalue"] <- anova_summary[[2]][[1]][["Pr(>F)"]][1]
@@ -536,7 +536,7 @@ SCENIC_SSE_extracting <- function(results=SCENIC_picking,type,compare,sse){
           
           fit <- lm(Z ~ Condition_mCherry_strict + group, data = anova_df)
           emm <- emmeans(fit, ~ Condition_mCherry_strict)
-          emm_results <- pairs(emm, adjust = "tukey") %>% as.data.frame
+          emm_results <- pairs(emm, adjust = "bonferroni") %>% as.data.frame
           emm_results <- column_to_rownames(emm_results,var = "contrast")
           
           TF_count[TF,"Pvalue"] <- anova_summary[[2]][[1]][["Pr(>F)"]][1]
@@ -616,7 +616,7 @@ SCENIC_SSE_extracting <- function(results=SCENIC_picking,type,compare,sse){
         
         fit <- lm(Z ~ Condition_mCherry_strict + group, data = anova_df)
         emm <- emmeans(fit, ~ Condition_mCherry_strict)
-        emm_results <- pairs(emm, adjust = "tukey") %>% as.data.frame
+        emm_results <- pairs(emm, adjust = "bonferroni") %>% as.data.frame
         emm_results <- column_to_rownames(emm_results,var = "contrast")
         
         TF_count[TF,"Pvalue"] <- anova_summary[[2]][[1]][["Pr(>F)"]][1]

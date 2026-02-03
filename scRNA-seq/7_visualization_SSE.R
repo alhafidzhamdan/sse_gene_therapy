@@ -114,7 +114,7 @@ scenic_sse7_sub <- scenic_sse7[c("STAT1(+),","IRF9(+),","FOS(+),","MAF(+),","ETS
                                  "JUN(+),","HIF1A(+),","SMAD1(+),","STAT2(+),","NFE2L2(+),",
                                  "SOX8(+),","SOX9(+),","SOX2(+),","BHLHE40(+),","SALL1(+),"),]
 
-save(results,file = "SCENIC_results.RData")
+save(results,file = "SCENIC_results.RData") #data is available at https://drive.google.com/file/d/1PuyEEVdf23-46YIwIakfag-JZhMXUp4O/view?usp=drive_link
 ## boxplot
 SCENIC_Zscore_plotting(results = results,gene_df=scenic_sse7_sub,
                        cell_line = NA,

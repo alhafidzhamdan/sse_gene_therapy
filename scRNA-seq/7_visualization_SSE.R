@@ -110,10 +110,11 @@ scenic_sse7$Pvalue <- ifelse(scenic_sse7$Freq<3,0.01,scenic_sse7$Pvalue)
 scenic_sse7 <- scenic_sse7[which(scenic_sse7$Pvalue<0.05),]
 scenic_sse7$Pvalue <- ifelse(scenic_sse7$Freq<3,NA,scenic_sse7$Pvalue)
 
-scenic_sse7_sub <- scenic_sse7[c("STAT1(+),","IRF9(+),","FOS(+),","MAF(+),","ETS1(+)",
-                                 "JUN(+),","HIF1A(+),","SMAD1(+),","STAT3(+),","NFE2L2(+)",
-                                 "SOX8(+),","SOX9(+),","SOX2(+),"),]
+scenic_sse7_sub <- scenic_sse7[c("STAT1(+),","IRF9(+),","FOS(+),","MAF(+),","ETS1(+),",
+                                 "JUN(+),","HIF1A(+),","SMAD1(+),","STAT2(+),","NFE2L2(+),",
+                                 "SOX8(+),","SOX9(+),","SOX2(+),","BHLHE40(+),","SALL1(+),"),]
 
+save(results,file = "SCENIC_results.RData")
 ## boxplot
 SCENIC_Zscore_plotting(results = results,gene_df=scenic_sse7_sub,
                        cell_line = NA,
@@ -154,26 +155,22 @@ lib_count <- as.data.frame(lib_count)
 expr_meta_final_plot <- expr_meta_final[which(expr_meta_final$condition %in% c("Control_No","SSE7_Yes","SSE7_No")),]
 expr_meta_final_plot$lib_order <- lib_count$Freq[match(expr_meta_final_plot$library,lib_count$Var1)]
 expr_meta_final_plot <- dplyr::arrange(expr_meta_final_plot,desc(lib_order))
+expr_meta_final_plot <- expr_meta_final_plot[,-3]
 
 expr_final_plot <- expr_final[gene,rownames(expr_meta_final_plot)]
 
-col_list <- list("library" = setNames(c(brewer.pal(7,"Set2"),brewer.pal(8,"Dark2")),levels(as.factor(expr_meta_final$library))), # Phase
-                 "condition" = c('Control_No' = "#87CEEB",
+col_list <- list(library = setNames(c(brewer.pal(7,"Set2"),brewer.pal(8,"Dark2")),levels(as.factor(expr_meta_final$library))), # Phase
+                 condition = c('Control_No' = "#87CEEB",
                                  'SSE7_No' = "#00008B",'SSE7_Yes' = "#ff5030"))
 
-top_anno <-ComplexHeatmap::HeatmapAnnotation(
-  library = expr_meta_final_plot$library,
-  condition = expr_meta_final_plot$condition,
-  col = col_list
-) 
-
-ComplexHeatmap::Heatmap(expr_final_plot,
-                        cluster_rows = F,cluster_columns = T,
-                        show_column_names = F,show_row_names = T,
-                        col = c("blue","white","red"),
-                        top_annotation = top_anno,
-                        column_title = NULL,
-)
+pheatmap::pheatmap(expr_final_plot,
+                   annotation_col = expr_meta_final_plot,
+                   cluster_cols = T,cluster_rows = F,
+                   annotation_colors = col_list,
+                   color = colorRampPalette(c("blue","white","red"))(100),
+                   breaks = seq(-2, 2, length.out = 101),
+                   scale = "row",na_col = "grey",
+                   border_color = NA,show_colnames = F)
 
 # scatter plot
 z_score_extract <- results$results_z_score[which(results$results_z_score$Topic %in% rownames(scenic_sse7)),]

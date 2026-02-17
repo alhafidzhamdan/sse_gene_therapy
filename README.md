@@ -21,8 +21,9 @@ Paired-end reads were aligned to the hg38 genome using BWA, filtering out poor q
 To perform overlapping analysis with GSC SEs, we downloaded raw fastq files from publicly available H3K27ac datasets on GSCs (GSE119834, GSE74529, GSE121601, and GSE92458) and called SEs using ROSE with default settings. A consensus set of GSC SEs were derived by considering SEs that occurred in at least two GSCs. The overlap significance between the consensus co-bound SOX2/SOX9 sites and consensus GSC SEs was performed using a circular permutation test as above. GO term association analysis was performed using GREAT. To find centrally enriched de novo motifs at SOX2 and SOX9 peaks within co-bound SOX2/SOX9 enhancers, and to identify the spacing between the most significant de novo motifs from each peak set, we used CentriMo and SpaMo, from the MEME-ChIP suite of tools (Ma et al., 2014). 
 
 Data: 
-- Raw data (fastqs and bigwigs) can be obtained from the ENA repository under the study number PRJEB107008
-- Peak files are under chip-seq/processed_data
+- Raw (fastqs and bigwigs) and processed data (merged peak files) can be obtained from the ENA repository under the study number PRJEB107008
+- Merged peak files can also be obtained within this repository under ChIP-seq/processed_data
+- SOX2 and SOX9 ChIP-seq coverage tracks are hosted at https://genome.ucsc.edu/s/alhafidzhamdan/co_bound_SOX2_SOX9_peaks
 
 
 ## Citation

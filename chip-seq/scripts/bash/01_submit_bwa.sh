@@ -1,5 +1,11 @@
 #!/bin/bash
 
+## Example bash script to align ChIP-seq reads to the reference genome using BWA. To run this script, do: qsub -t 1-n submit_bwa.sh CONFIG IDS READ_DIR BAM_DIR
+## CONFIG is the path to the file scripts/config.sh which contains environment variables set to commonly used paths and files in the script.
+## IDS is a list of sample ids, one per line.
+## READ_DIR is the path to the directory containing the raw fastq files for each sample.
+## BAM_DIR is the path to the directory where the aligned bams will be saved.
+
 #$ -N bwa
 #$ -j y
 #$ -S /bin/bash
@@ -18,6 +24,7 @@ source $CONFIG
 REPLICATE_ID=`head -n $SGE_TASK_ID $IDS | tail -n 1 | cut -f 8`
 
 # First run `bwa index $BWA_REF`
+## Here we used hg38
 
 # Align paired-end fastq reads 
 

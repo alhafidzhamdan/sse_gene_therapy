@@ -1,72 +1,139 @@
 ---
 title: "Steps taken to generate Figure 2 of Koeber et al, Nature 2026"
+author: Alhafidz Hamdan
 output: html_document
-date: "2024-04-02"
+date: "2026-02-01"
+editor_options: 
+  chunk_output_type: console
 ---
-
 
 # This document details the methods/steps used to generate figures used in Figure 2 (Koeber et al. Nature, 2026):
 ## Load required libraries
 ```{r}
-.p <- c("tidyverse", "ggpubr", "googlesheets4", "data.table", "regioneR", "VennDiagram")
+.p <- c("tidyverse", "ggpubr", "lemon", "data.table", "regioneR", "VennDiagram", "parallel", "regioneR", "rtracklayer")
 lapply(.p, require, character.only =T)
+
+theme_colplot <- theme(legend.position = "right", 
+                       legend.title = element_text(size=13, face = "bold"),
+                       legend.text = element_text(size=12),
+                       axis.ticks.length = unit(.2, "cm"),
+                       plot.margin = margin(0,0,0,0, "cm"), 
+                       plot.background = element_blank(),
+                       panel.background = element_blank(),
+                       plot.title = element_text(size=12, face = "bold", vjust = 1),
+                       axis.text = element_text(size=13), 
+                       axis.title = element_text(size=14))   
 
 ```
 
 ## Figure A is created outside of R, using Adobe Illustrator + BioRender
 
-## Figure B: Bar chart comparing the proportion of co-bound SOX2 and SOX9 peaks in each GSC culture
+## Figure B (left): Venn diagram of SOX2 and SOX9 overlap for a representative sample E28:
 ```{r}
-Sox_peaks = fread("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/basic_overlap_stats.txt")
-
-b <- Sox_peaks %>% filter(Sample != "Random") %>%
-  select(Sample, Sox2 = `%_Sox2_overlap`, Sox9= `%_Sox9_overlap`) %>%
-  mutate(Sox2 = Sox2*100, Sox9 = Sox9*100) %>%
-  mutate(Sample = as.factor(Sample)) %>%
-  # mutate(Sample = fct_relevel(Sample, "E27","E21","E34","E31","E28","E17","E37")) %>%
-  pivot_longer(!Sample) %>%
-  ggplot() +
-  geom_bar(aes(x=Sample, y=value, fill= name), position = "dodge", stat = "identity") +
-  labs(x=NULL,y = "Proportion within\n co-bound peaks (%)", fill = "Transcription factor") +
-  scale_fill_manual(values = c("Sox2" = "grey", "Sox9" = "red")) +
-  scale_y_continuous(breaks = c(0,50,100)) + 
-  theme_classic() +
-  theme(panel.grid = element_blank(), 
-        legend.position = "top",
-        legend.text = element_text(size=12), 
-        legend.title = element_text(size=13, face = "bold"), 
-        axis.text.y = element_text(size=12),
-        axis.text.x = element_text(size=11),
-        axis.title.y= element_text(size=14))
-
-pdf("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/figures/proportion_co_bound_peaks.pdf", height = 2.3, width = 3.5)
-b
+peak_dir = "../../processed_data/"
+this_sample = "E28"
+this_sample_sox2 <- import(paste0(peak_dir, "/", this_sample, "_Sox2_peaks.narrowPeak")) 
+this_sample_sox9 <- import(paste0(peak_dir, "/", this_sample, "_Sox9_peaks.narrowPeak")) 
+ 
+## Plot venn diagram of overlap:
+overlap <- subsetByOverlaps(this_sample_sox2, this_sample_sox9) 
+sox2_exclusive <- subsetByOverlaps(this_sample_sox2, this_sample_sox9, invert = T) 
+sox9_exclusive <- subsetByOverlaps(this_sample_sox9, this_sample_sox2, invert = T)  
+  
+pdf(paste0("Figures/", this_sample, "_sox2_sox9_overlap_venn_plot.pdf"), width = 4, height = 4, useDingbats = T, onefile = F)
+draw.pairwise.venn(area1 = length(sox2_exclusive) + length(overlap), 
+                   area2 = length(sox9_exclusive) + length(overlap), 
+                   cross.area = length(overlap), scaled =T, 
+                   fill = c("grey","darkred"), 
+                   alpha = c(0.6,0.6), fontfamily = rep("sans",3))
 dev.off()
+  
 ```
 
-## Figure C: Venn diagram of consensus SOX2 and SOX9 overlap:
+## Figure B (right): SOX2 and SOX9 signal intensity heatmaps for E28, generated in bash/05_submit_deeptools_heatmap.sh
+## Figure C: Bar charts of SOX2 and SOX9 peak overlaps across 7 GSC samples:
 ```{r}
+sox2_sox9_chipseq_samples = c("E17","E21","E27","E28","E31","E34","E37")
+peak_dir = "../../processed_data/"
+list.files(peak_dir)
+
+## Generate sets of overlapping and exclusive peaks for each sample:
+merged_peak_stats <- mclapply(seq_along(sox2_sox9_chipseq_samples), function(x) {
+  
+  this_sample <- sox2_sox9_chipseq_samples[x]
+  this_sample_sox2 <- import(paste0(peak_dir, "/", this_sample, "_Sox2_peaks.narrowPeak")) 
+  this_sample_sox9 <- import(paste0(peak_dir, "/", this_sample, "_Sox9_peaks.narrowPeak")) 
+ 
+  overlap <- subsetByOverlaps(this_sample_sox2, this_sample_sox9) 
+  overlap %>% as.data.frame() %>% 
+    fwrite(paste0("../../processed_data/", sox2_sox9_chipseq_samples[x], "_Sox2_Sox9_overlap.bed"), quote=F, sep = "\t", row.names = F, col.names = F)
+  sox2_only <- subsetByOverlaps(this_sample_sox2, this_sample_sox9, invert = T) 
+  sox2_only %>% as.data.frame() %>% 
+    fwrite(paste0("../../processed_data/", sox2_sox9_chipseq_samples[x], "_Sox2_exclusive.bed"), quote=F, sep = "\t", row.names = F)
+  sox9_only <- subsetByOverlaps(this_sample_sox9, this_sample_sox2, invert = T)  
+  sox9_only %>% as.data.frame() %>% 
+    fwrite(paste0("../../processed_data/", sox2_sox9_chipseq_samples[x], "_Sox9_exclusive.bed"), quote=F, sep = "\t", row.names = F)
+  
+  dat <-   data.frame(sample = this_sample, 
+                       total_sox2 = length(this_sample_sox2),
+                       total_sox9 = length(this_sample_sox9),
+                       sox2_only = length(sox2_only),
+                       sox9_only = length(sox9_only),
+                       overlap = length(overlap)) %>% 
+              dplyr::mutate(perc_sox2_overlap = overlap*100/total_sox2,
+                            perc_sox9_overlap = overlap*100/total_sox9)
+  
+  return(dat)
+  
+}) %>% rbindlist()
+
+pdf("Figures/co_binding_bar_plot.pdf", width = 4.2, height = 3.1, useDingbats = T, onefile = F)
+merged_peak_stats %>% 
+  dplyr::select(sample, perc_sox2_overlap, perc_sox9_overlap) %>% 
+  pivot_longer(!sample) %>% 
+  dplyr::mutate(TF = ifelse(str_detect(name, "sox2"), "SOX2", "SOX9")) %>% 
+  ggplot(aes(x=sample, y=value, fill=TF)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(limits=c(0,100), expand = c(0.04,0)) + 
+  scale_x_discrete(expand=c(0.09,0)) +
+  scale_fill_manual(values = c("SOX2" = "grey", "SOX9" = "#AD6363")) +
+  labs(x="Samples", y="% of co-bound peaks", fill = "TF peaks") +
+  theme_classic() + 
+  lemon::coord_capped_cart(left = "both", bottom = "none") +
+  theme_colplot +
+  theme(legend.position = "top", plot.margin = margin(0, 0, 0, 0, "cm"))
+dev.off()
+
+```
+
+## Figure D (left): Venn diagram of consensus SOX2 and SOX9 overlap:
+```{r}
+## Use bedtools multiinter to generate calls for SOX2/SOX9 overlap, SOX2 exclusive and SOX9 exclusive sets:
+## For consensus overlap, use union of 5 out of 7 calls
+# bedtools multiinter -header -i ChIP-seq/processed_data/*_Sox2_Sox9_overlap.bed  > ChIP-seq/processed_data/Merged_rep_Consensus5_overlap.bed
+# bedtools multiinter -header -i ChIP-seq/processed_data/*_Sox2_exclusive.bed  > ChIP-seq/processed_data/Merged_rep_consensus5_Sox2_exclusive.bed
+# bedtools multiinter -header -i ChIP-seq/processed_data/*_Sox9_exclusive.bed  > ChIP-seq/processed_data/Merged_rep_consensus5_Sox9_exclusive.bed
+
 ## Load consensus sets:
 ### Co-bound set:
-co_bound_consensus <- read.delim("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Macs2/Consensus_bed_files/Merged_rep_Consensus5_overlap.bed", header = F) %>%
+co_bound_consensus <- fread("../../processed_data/Merged_rep_Consensus5_overlap.bed") %>%
   toGRanges() %>%
   reduce()
 length(co_bound_consensus)
 
 ## SOX2 exclusive:
-Sox2_consensus <- read.delim("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Consensus_bed_files/Merged_rep_consensus5_Sox2_exclusive.bed", header=F) %>%
+Sox2_consensus <- fread("../../processed_data/Merged_rep_consensus5_Sox2_exclusive.bed") %>%
   toGRanges() %>%
   reduce()
 length(Sox2_consensus)
 
 ## SOX9 exclusive:
-Sox9_consensus <- read.delim("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Consensus_bed_files/Merged_rep_consensus5_Sox9_exclusive.bed", header=F) %>%
+Sox9_consensus <- fread("../../processed_data/Merged_rep_consensus5_Sox9_exclusive.bed") %>%
   toGRanges() %>%
   reduce()
 length(Sox9_consensus)
 
-
-pdf("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/figures/venn_diag_co_bound.pdf", height = 3, width = 3)
+pdf("/Figures/venn_diag_co_bound.pdf", height = 3, width = 3)
 draw.pairwise.venn(area1 = length(Sox2_consensus) + length(co_bound_consensus), 
                    area2 = length(Sox9_consensus) + length(co_bound_consensus), 
                    cross.area = length(co_bound_consensus), scaled =T, 
@@ -84,28 +151,30 @@ sox2_peaks <- c(Sox2_consensus, co_bound_consensus)
 sox9_peaks <- c(Sox9_consensus, co_bound_consensus)
 
 ### Perform overlap test:
+set.seed(999)
 perm_test_co_bound <- permTest(A = sox2_peaks, 
                                B = sox9_peaks,
-                               ntimes = 1000,
+                               ntimes = 10000,
                                randomize.function=circularRandomizeRegions, 
                                evaluate.function=numOverlaps, 
                                count.once=TRUE, 
                                genome="hg38", 
                                mc.set.seed=FALSE, 
-                               mc.cores=16)
+                               mc.cores=20)
 perm_test_co_bound
+
 ```
 
-## Figure D: Venn diagram of consensus co-bound sites vs super-enhancers in GSC:
+## Figure D (right): Venn diagram of consensus co-bound SOX2/SOX9 peaks vs super-enhancers in GSC:
 ```{r}
 ## Load consensus SE set: SEs occuring in >1 GSC
-consensus_SE <- read.table("Data/ChIP-seq/H3K27ac/SuperEnhancers/Consensus_SEs.bed", header = F) %>% 
+consensus_SE <- fread("../../processed_data/Consensus_SEs.bed") %>% 
   toGRanges() %>%
   reduce()
 length(consensus_SE)
 
 ## Load consensus co-bound SOX2 and SOX9 set:
-co_bound_consensus <- read.delim("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Consensus_bed_files/Merged_rep_Consensus5_overlap.bed", header = F) %>%
+co_bound_consensus <- fread("../../processed_data/Merged_rep_Consensus5_overlap.bed") %>%
   toGRanges() %>%
   reduce()
 length(co_bound_consensus)
@@ -114,171 +183,95 @@ co_bound_SOX_SEs <- subsetByOverlaps(co_bound_consensus, consensus_SE)
 co_bound_SOX_not_SE <- subsetByOverlaps(co_bound_consensus, consensus_SE, invert = T)
 SE_not_co_bound <- subsetByOverlaps(consensus_SE, co_bound_consensus, invert = T)
 
-pdf("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/figures/venn_diag_co_bound_SEs.pdf", height = 3, width = 3)
+pdf("Figures/venn_diag_co_bound_SEs.pdf", height = 3, width = 3)
 draw.pairwise.venn(area2 = length(co_bound_SOX_not_SE) +length(co_bound_SOX_SEs), 
                    area1 = length(SE_not_co_bound) + length(co_bound_SOX_SEs), 
                    cross.area = length(co_bound_SOX_SEs), scaled =T, 
                    cex = c(1.5,1.5,1.5), 
                    fill = c("lightblue","brown"), alpha = c(0.5,0.5), inverted = T, fontfamily = rep("sans",3))
-
-
 dev.off()
 
 ### Perform overlap test:
+set.seed(999)
 perm_test_co_bound_SE <- permTest(A = co_bound_consensus, 
                                B = consensus_SE,
-                               ntimes = 1000,
+                               ntimes = 10000,
                                randomize.function=circularRandomizeRegions, 
                                evaluate.function=numOverlaps, 
                                count.once=TRUE, 
                                genome="hg38", 
                                mc.set.seed=FALSE, 
-                               mc.cores=16)
-
-
-```
-
-## Figure E: Signal intensity at co-bound sites
-```{r}
-files <- list.files("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Signal_intensity/", pattern = "_scores_per_bin.tab", full.names = F)
-files <- files[grep(pattern = "Sox",  files, invert = T)]
-
-signal_intensity <- lapply(seq_along(files), function(x) {
-  name <- str_split(gsub(".*/", "", files[x]), "_")[[1]][1]
-  sig <- fread(paste0("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Signal_intensity/", files[x]), header = F, skip = 1) %>% mutate(cell_line = name) %>% filter(!str_detect(V1, "HLA-|random|Y|alt")) %>% 
-    mutate(genomic_location = paste0(V1,":",V2,"-",V3))
-  return(sig)
-  
-}) %>% rbindlist()
-
-N <- 14
-e <- signal_intensity %>% 
-  dplyr::rename(Sox2 = V4, Sox9 = V5) %>% 
-   mutate(Sox2 = if_else(Sox2 <0, 0, Sox2),
-          Sox9 = if_else(Sox9 <0, 0, Sox9)) %>% 
-  ggplot(aes(x=Sox2, y = Sox9)) + 
-  geom_bin2d(bins=50) +
-  scale_fill_viridis_c(option = "magma")+ 
-  labs(x="\nSox2 signal intensity", y="Sox9 signal intensity\n", fill="Count") +
-  facet_grid(~cell_line, scales = "free") + 
-  stat_cor(method = "pearson", aes(label = ..r.label..), label.y.npc = 0.95, label.x.npc = 0.05, size=5) +
-  # stat_cor(method = "pearson", label.y.npc = 0.95, label.x.npc = 0.05, size=5) +
-  scale_y_log10() + 
-  scale_x_log10() + 
-  theme_minimal() +
-  theme(strip.text = element_text(size=N+2),
-        strip.background = element_blank(),
-        legend.text = element_text(size=N), 
-        panel.grid = element_blank(), 
-        legend.title = element_text(size=N+1, face = "bold"),
-        axis.text = element_blank(), 
-        axis.ticks = element_blank(),
-        axis.title = element_text(size=N+2))
-
-pdf("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/figures/signal_intensity_sox2_sox9.pdf", height = 3, width = 10, useDingbats = F, pointsize = 1)
-e
-dev.off()
-
+                               mc.cores=20)
 
 ```
 
-## Figure F: GREAT GO terms:
+## Figure E: GO terms for co-bound SOX2/SOX9 sites at SEs:
 ```{r}
-## Biological context:
-go_biological <- read_tsv("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Gene_set_Ontologies/GREAT_analysis/GREAT_GO_BIOLOGICAL.tsv", skip = 3)
-go_molecular <- read_tsv("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Gene_set_Ontologies/GREAT_analysis/GREAT_GO_MOLECULAR.tsv", skip = 3)
-go_cellular <- read_tsv("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Gene_set_Ontologies/GREAT_analysis/GREAT_GO_CELLULAR.tsv", skip = 3)
+### First overlap co-bound SOX2/SOX9 sets with consensus SEs and get gene annotations using GREAT via the online tool
+### Then perform GO Biological term analysis using clusterProfiler.
+library(clusterProfiler)
+library(org.Hs.eg.db) 
+library(DOSE)
+ 
+# # Convert to ENTREZID:
+# this_set_entrezid <- bitr(co_bound_SE_genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db) ## For DO terms
+# nrow(this_set_entrezid)
+#   
+# ## GO and DO tests:
+# go_bp_terms <- enrichGO(gene = this_set_entrezid$SYMBOL,
+#                         OrgDb = org.Hs.eg.db,
+#                         keyType = 'SYMBOL',
+#                         ont = "BP",
+#                         pAdjustMethod = "BH",
+#                         pvalueCutoff = 0.01,
+#                         qvalueCutoff = 0.05) %>% as.data.table() %>% 
+#   dplyr::mutate(term = "GO Biological Process", set = "co_bound_SE_genes")
+#   
+# go_bp_terms %>% fwrite("../../processed_data/gene_set_enrichment_biological_processes_co-bound_sox_in_SEs.tsv", quote = F, sep = "\t", row.names = F)
+go_bp_terms = fread("../../processed_data/gene_set_enrichment_biological_processes_co-bound_sox_in_SEs.tsv")
 
-colnames(go_biological)
-x <- go_biological %>% 
-  dplyr::select(Desc, BinomFdrQ, Genes) %>% 
-  arrange(BinomFdrQ) %>% 
-  slice_head(n=5) %>% 
-  mutate(type = "GO Biological")
-
-y <- go_molecular %>% 
-  dplyr::select(Desc, BinomFdrQ, Genes) %>% 
-  arrange(BinomFdrQ) %>% 
-  slice_head(n=5) %>% 
-  mutate(type = "GO Molecular")
-
-z <- go_cellular %>% 
-  dplyr::select(Desc, BinomFdrQ, Genes) %>% 
-  arrange(BinomFdrQ) %>% 
-  slice_head(n=5) %>% 
-  mutate(type = "GO Cellular")
-
-f <- rbind(x,y,z) %>% 
-  ggplot(aes(x=-log10(BinomFdrQ), y= reorder(Desc, -BinomFdrQ))) + 
-  geom_col(fill = "darkgrey") +
+pdf("Figures/cobound_overlap_SEs_go_biological_terms.pdf", width = 4.2, height = 3.1, useDingbats = T, onefile = F)
+go_bp_terms %>%
+  slice_head(n=10) %>% 
+  ungroup() %>%
+  separate(GeneRatio, into = c("GeneCount", "GeneTotal"), sep = "/") %>%
+  separate(BgRatio, into = c("BgCount", "BgTotal"), sep = "/") %>%
+  dplyr::mutate(FC = (as.numeric(GeneCount)/as.numeric(GeneTotal))/(as.numeric(BgCount)/as.numeric(BgTotal))) %>%
+  ggplot(aes(x = -log10(qvalue), y=reorder(Description, -qvalue), size= FC)) +
+  geom_segment(aes(xend = 0, yend = Description), color = "grey", size=0.2) +
+  geom_point(aes(color = set)) +
+  labs(y =NULL, title = "Super-enhancers", x = NULL) +
+  scale_color_manual(values = c("co_bound_SE_genes" = "#7570B3")) +
+  scale_size_binned(limits=c(1,10)) +
+  scale_x_reverse(expand=c(0.01,0.1), n.breaks=5, limits=c(8,0)) +
+  scale_y_discrete(position = "right") +
   theme_classic() +
-  lemon::coord_capped_cart(left = "both", bottom = "both") +
-  facet_wrap(~type, ncol=1, scales = "free_y") +
-  scale_x_continuous(breaks= c(0,2,4), limits=c(0,5), expand = c(0,0.1)) + 
-  scale_y_discrete(expand=c(0.2,0)) +
-  labs(x=expression("-log"[10]*"Q-value"), y = NULL) + 
-  theme(strip.text = element_text(hjust = 0, face = "bold", size=11),
-        strip.background = element_blank(),
-        axis.text.y = element_text(size=11, face = "italic"),
-        axis.text.x = element_text(size=11),
-        panel.grid = element_blank())
-
-pdf("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/figures/GREAT_GO_terms.pdf", height = 4, width = 5.3)
-f
+  coord_capped_cart(right = "none", bottom = "both") +
+  theme_colplot +
+  theme(strip.text = element_text(size=12, hjust=0),
+        legend.position = "none",
+        axis.ticks.y = element_line(linewidth = 0.2),
+        axis.line.x = element_line(colour = "transparent"), 
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(), 
+        plot.title = element_text(face = "plain"),
+        axis.line.y = element_line(linewidth = 0.2),
+        axis.text.y = element_text(size=10))
 dev.off()
-
-
-# 
-# ## Get all genes assigned to co-bound peaks:
-# genes_co_bound <- read_tsv("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Gene_set_Ontologies/GREAT_analysis/GREAT_genes.txt", col_names = F, skip = 1) %>% 
-#   separate(X2, into = paste("A", 1:20, sep=""), sep =",*() ") %>% 
-#   pivot_longer(!X1) %>% 
-#   filter(!str_detect(value, "[(]")) %>% 
-#   dplyr::select(value) %>% 
-#   distinct(value) %>% 
-#   filter(!str_detect(value, "ENSG")) %>% 
-#   arrange(value) 
-# 
-# genes_co_bound %>% write_tsv("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/Merged_rep/Gene_set_Ontologies/GREAT_analysis/GREAT_genes_tidy.txt", col_names = F)
 
 ```
 
-## Figure G: Coverage tracks of SOX2 and SOX9 near CDK6 and PTRPRZ1, USCS browser at:
-
-## Figure H:
+## Figure F: SOX2/SOX9 expression correlation across TCGA cancers:
 ```{r}
-TCGA <- read.delim("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/cbioportal_sox2_sox9.txt", header=T)  %>%
+## From TCGA RNA-seq data (cbioportal):
+TCGA <- read.delim("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/External_data/cbioportal/tcga_pan_can_atlas_2018/sox_genes/cbioportal_sox2_sox9.txt", header=T)  %>%
   select(Sample = Sample.Id,
          Cancer_type = TCGA.PanCanAtlas.Cancer.Type.Acronym,
          Sox2_expression = SOX2..mRNA.Expression..RSEM..Batch.normalized.from.Illumina.HiSeq_RNASeqV2...log2.value...1..,
          Sox9_expression = SOX9..mRNA.Expression..RSEM..Batch.normalized.from.Illumina.HiSeq_RNASeqV2...log2.value...1..)
 
-TCGA %>% 
-  ggplot(aes(x=Sox2_expression, y= Sox9_expression)) + 
-  geom_point() + 
-  scale_y_log10() + 
-  scale_x_log10() + 
-  facet_wrap(~Cancer_type, scales = "free")
-
-## Compute correlations:
-TCGA_stats <- TCGA %>% 
-  group_by(Cancer_type) %>% 
-  rstatix::cor_test(vars = Sox2_expression, vars2 = Sox9_expression) %>% 
-  rstatix::adjust_pvalue() 
-
-## Compute median expression of SOX2 and SOX9 for each cancer type:
-# TCGA %>% 
-#   group_by(Cancer_type) %>% 
-#   mutate(median_SOX2 = median(Sox2_expression), 
-#          median_SOX9 = median(Sox9_expression)) %>% 
-#   distinct(Cancer_type, .keep_all = T) %>% 
-#   dplyr::select(Cancer_type, median_SOX2, median_SOX9) %>% 
-#   left_join(TCGA_stats) %>% 
-#   ggplot(aes(x=log2(median_SOX2), y = log2(median_SOX9), color = cor, size = -log10(p.adj))) + 
-#   geom_point() +
-#   scale_color_viridis_c()
-
-h <- TCGA_stats %>% 
+pdf("Figures/TCGA_SOX2_SOX9_exp_corr.pdf", height = 4.9, width = 6)
+TCGA_stats %>% 
   ggplot(aes(x=reorder(Cancer_type,cor), fill=-log10(p.adj), y = cor)) +
   geom_col() + 
   scale_fill_viridis_c(option = "magma") + 
@@ -295,13 +288,33 @@ h <- TCGA_stats %>%
         legend.title = element_text(size=13, face = "bold", vjust = 0.9),
         legend.text = element_text(size=11), 
         axis.text.x = element_text(size=12, angle = 90, hjust=0.9, vjust=0.5))
-h
-
-pdf("/Users/alhafidzhamdan/PhD/Data/ChIP-seq/Sox2_Sox9/figures/TCGA_SOX2_SOX9_exp_corr.pdf", height = 4.9, width = 6)
-h
 dev.off()
 
+```
+
+## Figure G: Inverted palindromic motif spacing at co-bound SOX2/SOX9 sites:
+```{r}
+pdf("Figures/Thesis/chapter_5/sox_monomer_pairing_inverted_palindrome_gaps.pdf", width = 2, height = 3, useDingbats = F, onefile = F)
+fread("../../processed_data/SOX_monomer_at_SOX2_co_bound_ENH_spamo.tsv") %>% 
+  dplyr::filter(str_detect(sec_alt, "Sox|SRY"))  %>% 
+  dplyr::filter(orient == "0" | orient == "1") %>% 
+  group_by(gap) %>% 
+  dplyr::summarise(total = sum(count)) %>% 
+  ggplot(aes(x=gap, y=total)) +
+  geom_col() +
+  theme_classic() +
+  coord_capped_cart(left = "both", bottom = "none") +
+  labs(x= "Inverted palindromic\n SOX motif gap", y = "Count") +
+  theme_colplot +
+  scale_y_continuous(limits=c(0,150), expand = c(0.02,0.05)) +
+  scale_x_continuous(expand = c(0.02,0.01))
+dev.off()
 
 ```
+
+## Figure H: Coverage tracks of SOX2 and SOX9 near CDK6 and PTRPRZ1, USCS browser at https://genome.ucsc.edu/s/alhafidzhamdan/co_bound_SOX2_SOX9_peaks
+## Figure I: Run within the MEME-Suite tool via the online platform - https://meme-suite.org/meme/tools/meme-chip (Classic mode)
+
+
 
 

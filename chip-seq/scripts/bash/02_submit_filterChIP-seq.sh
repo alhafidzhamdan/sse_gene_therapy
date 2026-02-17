@@ -1,5 +1,10 @@
 #!/bin/bash
 
+## Example bash script to filter ChIP-seq bams by removing multi-mapped reads, blacklisted regions and duplicates. To run this script, do: qsub -t 1-n submit_filterChIP-seq.sh CONFIG IDS BAM_DIR
+## CONFIG is the path to the file scripts/config.sh which contains environment variables set to commonly used paths and files in the script.
+## IDS is a list of sample ids, one per line.
+## BAM_DIR is the path to the directory containing the final bams for each sample and their corresponding input bams.
+
 #$ -N filterChIP
 #$ -j y
 #$ -S /bin/bash

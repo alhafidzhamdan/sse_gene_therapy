@@ -54,7 +54,7 @@ dev.off()
 ## Figure C: Bar charts of SOX2 and SOX9 peak overlaps across 7 GSC samples:
 ```{r}
 sox2_sox9_chipseq_samples = c("E17","E21","E27","E28","E31","E34","E37")
-peak_dir = "../../processed_data/"
+peak_dir = "../../processed_data/macs2"
 list.files(peak_dir)
 
 ## Generate sets of overlapping and exclusive peaks for each sample:

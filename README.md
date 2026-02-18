@@ -4,12 +4,10 @@ This repository contains steps taken to analyse single cell RNA-seq and SOX2 and
 ## scRNA-seq
 
 Steps:
-8 human GSC lines (E17, E20, E21, E28, E31, E34, E43 and E55) were transduced with AAV-SSE7-mCherry. 3 days post-transduction, 10% of the cells were collected for flow cytometry to assess transduction efficiency, and the remaining 90% were processed for single-cell RNA-sequencing library preparation using the PARSE Evercode v2 Cell Fixation Kit and the PARSE Evercode WT Mega v2 Kit.
-
-Paired-end reads were aligned to the hg38 genome using the standard PARSE Bioscience pipeline, split-pipe (version 1.1.2), with default parameters. Three custom genes: mCherry, HSV-TK, and bGH polyA; were added to the reference genome to enable detection of activated SSE-7 cells.
+8 human GSC lines (E17, E20, E21, E28, E31, E34, E43 and E55) were transduced with AAV-SSE7-mCherry. 3 days post-transduction, 10% of the cells were collected for flow cytometry to assess transduction efficiency, and the remaining 90% were processed for single-cell RNA-sequencing library preparation using the PARSE Evercode v2 Cell Fixation Kit and the PARSE Evercode WT Mega v2 Kit. Paired-end reads were aligned to the hg38 genome using the standard PARSE Bioscience pipeline, split-pipe (version 1.1.2), with default parameters. Three custom genes: mCherry, HSV-TK, and bGH polyA; were added to the reference genome to enable detection of activated SSE-7 cells.
 
 
-Data:
+Data: 
 - Raw fastqs files can be obtained from the ENA repository under the study number PRJEB81816
 
 

@@ -24,7 +24,7 @@ Data:
 
 ## Citation
 
-    URL: Pending
-    DOI: Pending
+    URL: https://www.nature.com/articles/s41586-026-10329-6
+    DOI: https://doi.org/10.1038/s41586-026-10329-6
 
 
